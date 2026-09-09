@@ -1,0 +1,590 @@
+{
+  "name": "WF13 - REST API Wrapper (AI-ERP)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## WF13 — Webhook יחיד ל-Frontend\n\nמקבל POST עם `{action, table, payload}` (או `{action:\"chat\", message}`).\n\n**לפני שמריצים:**\n1. הכניסו ל-Code node הבא (Validate & Prepare) את ה-Base ID האמיתי שלכם\n2. צרו Credential מסוג HTTP Header Auth: Name=`Authorization`, Value=`Bearer <YOUR_AIRTABLE_PAT>`\n3. חברו את ה-Credential לכל שלושת ה-HTTP Request nodes (List/Create/Update)\n4. ה-Webhook Production URL (אחרי Activate) הוא מה שמכניסים בהגדרות ה-frontend",
+        "height": 244,
+        "width": 588
+      },
+      "id": "a41a716e-73f0-4af2-aeaf-cc4713e09220",
+      "name": "הוראות התקנה",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "content": "**CORS**: אם ה-frontend רץ בדפדפן, בקשות עם Content-Type: application/json שולחות קודם preflight OPTIONS. * ייתכן שתצטרכו Webhook נוסף על אותו path עם method=OPTIONS שמחזיר מיד 200 + אותם headers — תלוי בגרסת n8n שלכם.",
+        "height": 336,
+        "width": 496
+      },
+      "id": "f658a424-5f7f-4a84-a044-f732685e496a",
+      "name": "הערת CORS",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf13-erp",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "8ae05677-d9c9-4c07-af4f-11b4e142beda",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        512
+      ],
+      "webhookId": "wf13-erp"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALLOWED_TABLES = ['Invoices','Leads','Products','Tasks'];\nconst ALLOWED_ACTIONS = ['list','create','update','chat'];\nconst BASE_ID = 'appdB6Amrw3JWFCUH'; \n\nconst body = $json.body || $json || {};\nconst action = body.action;\nconst table = body.table;\nconst payload = body.payload || {};\n\nif (!ALLOWED_ACTIONS.includes(action)) {\n  return [{ json: { valid:false, errorMessage:`action לא חוקי: ${action}` } }];\n}\nif (action !== 'chat' && !ALLOWED_TABLES.includes(table)) {\n  return [{ json: { valid:false, errorMessage:`table לא חוקי: ${table}` } }];\n}\n\nlet outUrl = '';\nlet method = 'GET';\nlet outBody = {};\n\nif (action === 'list') {\n  method = 'GET';\n  outUrl = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(table)}`;\n}\n\nif (action === 'create') {\n  method = 'POST';\n  outUrl = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(table)}`;\n  const fields = payload.fields ? { ...payload.fields } : { ...payload };\n  // * חישוב מע\"מ 18% אוטומטי בעת יצירת חשבונית\n  if (table === 'Invoices' && fields.Amount !== undefined) {\n    const amount = Number(fields.Amount) || 0;\n    fields.VatAmount = Math.round(amount * 0.18 * 100) / 100;\n    fields.Total = Math.round(amount * 1.18 * 100) / 100;\n  }\n  outBody = { fields };\n}\n\nif (action === 'update') {\n  method = 'PATCH';\n  const recId = payload.id;\n  if (!recId) {\n    return [{ json: { valid:false, errorMessage:'update דורש payload.id' } }];\n  }\n  outUrl = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(table)}/${recId}`;\n  outBody = { fields: payload.fields || {} };\n}\n\nreturn [{\n  json: { valid:true, action, table, method, url: outUrl, body: outBody, chatMessage: body.message }\n}];"
+      },
+      "id": "4cbb5975-dc35-457f-8bbf-9d621436b6d3",
+      "name": "Validate & Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{$json.valid}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3e901ccb-329c-47ea-9230-11b49cebf1d2",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -176,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json.errorMessage } }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "158ee10a-89ce-48bf-854b-33f82fce9816",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        64,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "list",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "list"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "create",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "create"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "update",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "update"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "chat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and",
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "chat"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "187cd69f-3142-4de9-b236-b9c23407ed1c",
+      "name": "Route by Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        64,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableOAuth2Api",
+        "options": {}
+      },
+      "id": "6b0752a1-c7c5-4329-96b8-b7e590832542",
+      "name": "Airtable: List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        240
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a298d2e4-5885-4ab3-96da-73bb4b07c33d",
+      "name": "Respond List",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        608,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.url}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.body}}",
+        "options": {}
+      },
+      "id": "b99b3a96-3951-46cf-9b3f-a4ce90365e1e",
+      "name": "Airtable: Create",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        432
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "boNSajYnqTaE5Zdz",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e6e89c8c-bcb9-4841-886d-31911b5ed980",
+      "name": "Respond Create",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        608,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.url}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.body}}",
+        "options": {}
+      },
+      "id": "9c292eea-13bf-416a-b8b0-5cd162f09995",
+      "name": "Airtable: Update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        608
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "boNSajYnqTaE5Zdz",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "bdbdd6a8-c459-4dcb-b457-fd384619fb90",
+      "name": "Respond Update",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        608,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// * Placeholder עד שה-Manager/Customer-Service Agent (WF5/WF9) יחוברו בפועל\nreturn [{ json: { reply: `קיבלתי: \"${$json.chatMessage}\". סוכן ה-AI עדיין לא מחובר ל-WF13 עדיין — זה מענה זמני.` } }];"
+      },
+      "id": "2740861c-1830-467e-ad21-80f7dae4b91c",
+      "name": "Chat: Stub Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "178b70e7-82bb-4efe-a62e-18b34f77018a",
+      "name": "Respond Chat",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        608,
+        784
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Prepare": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Route by Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Action": {
+      "main": [
+        [
+          {
+            "node": "Airtable: List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable: Create",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable: Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chat: Stub Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable: List": {
+      "main": [
+        [
+          {
+            "node": "Respond List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable: Create": {
+      "main": [
+        [
+          {
+            "node": "Respond Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable: Update": {
+      "main": [
+        [
+          {
+            "node": "Respond Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat: Stub Reply": {
+      "main": [
+        [
+          {
+            "node": "Respond Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "27807875-7db1-4b1b-968d-01a475b084aa",
+  "meta": {
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "TQuaHFO4KqzJwP6f",
+  "tags": []
+}

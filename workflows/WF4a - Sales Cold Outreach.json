@@ -1,0 +1,324 @@
+{
+  "name": "WF4a - Sales Cold Outreach",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "authentication": "airtableOAuth2Api",
+        "baseId": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "https://airtable.com/appdB6Amrw3JWFCUH/tbl7HHNcQAmEznc1h/viwhmymXfvkWM4EcZ?blocks=hide",
+          "mode": "url"
+        },
+        "triggerField": "Created",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -64
+      ],
+      "id": "c3f7b0a4-720c-4e80-8ade-e7771fc42f46",
+      "name": "Airtable Trigger",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "898ebad7-dfd2-4dbd-93c4-af31a3f9bb90",
+              "leftValue": "={{ $json.fields.Status }}",
+              "rightValue": "New",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -368,
+        -64
+      ],
+      "id": "7377b88c-8e17-4263-b769-5f15c21c66ae",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $json.fields;\nconst interest = f.Interest || 'המוצרים שלנו';\nconst name = f.Name || 'לקוח יקר';\n\nconst subject = `${name}, התאמנו לך משהו ב${interest}`;\nconst body = `\n<div style=\"font-family: Arial, sans-serif; font-size: 14px; color: #12161C; line-height: 1.6;\">\n  <p>שלום ${name},</p>\n  <p>ראינו שאתם מתעניינים ב<b>${interest}</b> — רצינו להכיר לכם את המבחר שלנו באיי.איי אלקטרוניקה.</p>\n  <p>יש לנו מגוון רחב, אחריות יבואן מלאה על כל מוצר, וצוות מקצועי שישמח לייעץ בהתאמה בדיוק לצורך שלכם.</p>\n  <p>נשמח לשמוע מכם ולעזור למצוא את הפתרון המתאים.</p>\n  <p>בברכה,<br>צוות איי.איי אלקטרוניקה ⚡</p>\n</div>\n`;\n\nreturn { json: { to: f.Email, subject, body, recordId: $json.id } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -240
+      ],
+      "id": "9e4fc8a8-4116-4ce0-9d35-d1db59f650e1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        -224
+      ],
+      "id": "9001a028-af91-42ec-8532-da333ad60f14",
+      "name": "Send a message",
+      "webhookId": "d046e1a5-de70-4b26-bdcf-7c73177bad9f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yQZz2KbvORPANJAb",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl7HHNcQAmEznc1h",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tbl7HHNcQAmEznc1h"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Airtable Trigger').item.json.id }}",
+            "Status": "Contacted",
+            "Name": "={{ $('Airtable Trigger').item.json.fields.Name }}",
+            "Email": "={{ $('Airtable Trigger').item.json.fields.Email }}",
+            "Company": "={{ $('Airtable Trigger').item.json.fields.Company }}",
+            "Interest": "={{ $('Airtable Trigger').item.json.fields.Interest }}",
+            "ContactCount": 0,
+            "LastContactedAt": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Interest",
+              "displayName": "Interest",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ContactCount",
+              "displayName": "ContactCount",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "LastContactedAt",
+              "displayName": "LastContactedAt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        288,
+        -224
+      ],
+      "id": "392db814-ceef-47e8-8885-97ce4e687352",
+      "name": "Update record",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Airtable Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "070ee3b4-5cbc-4056-a09d-15831c37af7d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "cZH5OOdTCKYlj3TY",
+  "tags": []
+}

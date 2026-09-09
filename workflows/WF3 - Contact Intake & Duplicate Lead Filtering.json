@@ -1,0 +1,256 @@
+{
+  "name": "WF3 - Contact Intake & Duplicate Lead Filtering",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "authentication": "airtableOAuth2Api",
+        "baseId": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "https://airtable.com/appdB6Amrw3JWFCUH/tbl7HHNcQAmEznc1h/viwhmymXfvkWM4EcZ",
+          "mode": "url"
+        },
+        "triggerField": "Created",
+        "additionalFields": {}
+      },
+      "id": "4cfc3b68-46d5-408d-904d-075c3c53d283",
+      "name": "Airtable Trigger (New Lead)",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const BASE_ID = 'appdB6Amrw3JWFCUH'; // * להחליף ב-Base ID האמיתי\nconst rec = $json;\nconst fields = rec.fields || {};\nconst email = (fields.Email || '').trim();\nconst company = (fields.Company || '').trim();\n\nconst clauses = [];\nif (email) clauses.push(`{Email}='${email.replace(/'/g, \"\\\\'\")}'`);\nif (company) clauses.push(`{Company}='${company.replace(/'/g, \"\\\\'\")}'`);\n\nif (clauses.length === 0) {\n  // אין מספיק מידע (לא Email ולא Company) — מדלגים על בדיקת כפילות\n  return { json: { recordId: rec.id, fields, skip: true } };\n}\n\nconst orClause = clauses.length > 1 ? `OR(${clauses.join(',')})` : clauses[0];\nconst formula = `AND(NOT(RECORD_ID()='${rec.id}'), ${orClause})`;\nconst searchUrl = `https://api.airtable.com/v0/${BASE_ID}/Leads?filterByFormula=${encodeURIComponent(formula)}`;\n\nreturn { json: { recordId: rec.id, fields, skip: true } };"
+      },
+      "id": "9660596a-ccdf-4a12-8ca9-454a1a4996e2",
+      "name": "Build Duplicate Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-skip",
+              "leftValue": "={{$json.skip}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "be62f924-8df4-4604-ae62-07832aee4534",
+      "name": "Enough Info To Compare?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const BASE_ID = 'appdB6Amrw3JWFCUH'; // *\nconst fields = $json.fields || {};\nconst status = (fields.Status && fields.Status.trim()) ? fields.Status : 'New';\nreturn { json: {\n  url: `https://api.airtable.com/v0/${BASE_ID}/Leads/${$json.recordId}`,\n  body: { fields: { Status: status } }\n}};"
+      },
+      "id": "88163231-fe2b-45f0-8778-81a1a54eb266",
+      "name": "No Compare Needed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.searchUrl}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {}
+      },
+      "id": "0a4163b8-7a92-45f9-8e99-cbdda69d4918",
+      "name": "Search Duplicate Leads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        512
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "boNSajYnqTaE5Zdz",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const BASE_ID = 'appdB6Amrw3JWFCUH'; // *\nconst dupRecords = $json.records || [];\nconst recordId = $('Build Duplicate Filter').item.json.recordId;\nconst isDuplicate = dupRecords.length > 0;\nconst status = isDuplicate ? 'Duplicate' : 'New';\nreturn { json: {\n  url: `https://api.airtable.com/v0/${BASE_ID}/Leads/${recordId}`,\n  body: { fields: { Status: status } }\n}};"
+      },
+      "id": "dc10944a-feb2-4193-b16a-c437d73d123d",
+      "name": "Evaluate Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.url}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.body}}",
+        "options": {}
+      },
+      "id": "22cf9c6f-acb6-4d35-8a12-68bcb8fb9478",
+      "name": "Update Lead Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        384
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "boNSajYnqTaE5Zdz",
+          "name": "Bearer Auth account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Airtable Trigger (New Lead)": {
+      "main": [
+        [
+          {
+            "node": "Build Duplicate Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Duplicate Filter": {
+      "main": [
+        [
+          {
+            "node": "Enough Info To Compare?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enough Info To Compare?": {
+      "main": [
+        [
+          {
+            "node": "No Compare Needed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Duplicate Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Compare Needed": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Duplicate Leads": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "885f6629-465c-42fd-af25-b33586554acc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "s2heLloGrXmmlew3",
+  "tags": []
+}

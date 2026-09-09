@@ -1,0 +1,136 @@
+{
+  "name": "WF1 - Tax Validation & VAT Calculation",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## WF1 — אימות מסמך וחישוב מע\"מ 18%\n\nרץ אוטומטית כשנוצרת שורה חדשה ב-Invoices (טריגר על שדה Created).\n\n**לפני שמריצים:**\n1. ב-node 'Airtable Trigger': בחרו את ה-Credential מסוג *Airtable Personal Access Token* (לא HTTP Header Auth), ובחרו את ה-Base/Table מהתפריטים הנפתחים (לא מ-Base ID מוקלד ידנית — ה-Trigger node עובד עם resource picker).\n2. ב-node 'Update Invoice (Airtable)': עדכנו את BASE_ID בקוד (Code node שלפניו) לערך האמיתי, וחברו את אותו Credential מסוג HTTP Header Auth ששימש כבר ב-WF13.\n3. Activate.\n\n* הערה: זה workflow משלים ל-WF13 — WF13 כבר מחשב VAT מיידית בזמן היצירה (כדי שה-frontend יקבל תשובה מיידית), ו-WF1 מחשב מחדש אותו דבר כ'רשת ביטחון' רשמית לפי דרישת הבריף. אין בכך סתירה, רק כפילות מכוונת.",
+        "height": 300,
+        "width": 400
+      },
+      "id": "3a4c1410-952d-463e-ba86-8ad389e06e3e",
+      "name": "הוראות התקנה",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "authentication": "airtableOAuth2Api",
+        "baseId": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "https://airtable.com/appdB6Amrw3JWFCUH/tblgfDk5HnJQrkYmw/viwP1cNjqvMZ53sxx?blocks=hide",
+          "mode": "url"
+        },
+        "triggerField": "Created",
+        "additionalFields": {}
+      },
+      "id": "d68ac4e4-6900-4f34-9e7e-8270e331c319",
+      "name": "Airtable Trigger (New Invoice)",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        352
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const BASE_ID = 'appdB6Amrw3JWFCUH'; // * להחליף ב-Base ID האמיתי\nconst VAT_RATE = 0.18; // מע\"מ ישראלי 18%\n\nconst rec = $json;\nconst fields = rec.fields || {};\nconst amount = Number(fields.Amount) || 0;\nconst vat = Math.round(amount * VAT_RATE * 100) / 100;\nconst total = Math.round(amount * (1 + VAT_RATE) * 100) / 100;\n// אם אין עדיין סטטוס (שדה טקסט חופשי, לא אכוף על ידי Airtable) — נקבע pending\nconst status = (fields.Status && fields.Status.trim()) ? fields.Status : 'pending';\n\nreturn [{\n  json: {\n    recordId: rec.id,\n    url: `https://api.airtable.com/v0/${BASE_ID}/Invoices/${rec.id}`,\n    body: { fields: { VatAmount: vat, Total: total, Status: status } }\n  }\n}];"
+      },
+      "id": "ad4d87e3-4d05-4fe9-91af-db284042fe86",
+      "name": "Calculate VAT (18%)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.url}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.body}}",
+        "options": {}
+      },
+      "id": "e40ac681-b636-427f-a515-4f3c58d018fa",
+      "name": "Update Invoice (Airtable)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        352
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "boNSajYnqTaE5Zdz",
+          "name": "Bearer Auth account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Airtable Trigger (New Invoice)": {
+      "main": [
+        [
+          {
+            "node": "Calculate VAT (18%)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate VAT (18%)": {
+      "main": [
+        [
+          {
+            "node": "Update Invoice (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2d03c609-b08f-427d-864a-d3f6014c8ecc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "pYDkyzBCAUz5eG50",
+  "tags": []
+}

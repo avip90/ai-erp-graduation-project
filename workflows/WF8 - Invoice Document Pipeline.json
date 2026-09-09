@@ -1,0 +1,358 @@
+{
+  "name": "WF8 - Invoice Document Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "authentication": "airtableOAuth2Api",
+        "baseId": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "https://airtable.com/appdB6Amrw3JWFCUH/tblgfDk5HnJQrkYmw/viwP1cNjqvMZ53sxx?blocks=hide",
+          "mode": "url"
+        },
+        "triggerField": "Created",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        -288
+      ],
+      "id": "ce3e2914-b2e0-4201-9954-8ab9c00ed09a",
+      "name": "Airtable Trigger",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 70
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1024,
+        -288
+      ],
+      "id": "84a30051-5110-4994-bf6c-21b779f5b4d7",
+      "name": "Wait",
+      "webhookId": "82086231-6b0b-48a6-b50d-8b974a997117"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appdB6Amrw3JWFCUH"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblgfDk5HnJQrkYmw",
+          "mode": "list",
+          "cachedResultName": "Invoices",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tblgfDk5HnJQrkYmw"
+        },
+        "id": "={{ $('Airtable Trigger').item.json.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -800,
+        -288
+      ],
+      "id": "8f9fd887-1f99-48a0-82ec-a367a7d18bdc",
+      "name": "Get a record",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const f = $json.fields || {};\nconst dateStr = new Date(f.Created).toLocaleDateString('he-IL');\n\nconst html = `<!DOCTYPE html>\n<html lang=\"he\" dir=\"rtl\">\n<head>\n<meta charset=\"UTF-8\">\n<title>חשבונית ${f.InvoiceNumber || ''}</title>\n<style>\n  body { font-family: Arial, sans-serif; padding: 40px; color: #12161C; }\n  .header { display: flex; justify-content: space-between; border-bottom: 3px solid #0F9E96; padding-bottom: 16px; margin-bottom: 24px; }\n  .brand { font-size: 22px; font-weight: 800; }\n  .invoice-title { font-size: 18px; color: #5B6472; }\n  table { width: 100%; border-collapse: collapse; margin-top: 20px; }\n  td, th { padding: 10px; border-bottom: 1px solid #E2E6EC; text-align: right; }\n  .total-row { font-weight: 800; font-size: 16px; background: #F6F7F9; }\n</style>\n</head>\n<body>\n  <div class=\"header\">\n    <div class=\"brand\">⚡ איי.איי אלקטרוניקה</div>\n    <div class=\"invoice-title\">חשבונית מס' ${f.InvoiceNumber || ''}</div>\n  </div>\n  <p><b>מזהה לקוח:</b> ${f.CustomerId || ''}</p>\n  <p><b>תאריך:</b> ${dateStr}</p>\n  <table>\n    <tr><th>תיאור</th><th>סכום</th></tr>\n    <tr><td>סכום לפני מע\"מ</td><td>₪${(f.Amount || 0).toFixed(2)}</td></tr>\n    <tr><td>מע\"מ (18%)</td><td>₪${(f.VatAmount || 0).toFixed(2)}</td></tr>\n    <tr class=\"total-row\"><td>סה\"כ לתשלום</td><td>₪${(f.Total || 0).toFixed(2)}</td></tr>\n  </table>\n  <p style=\"margin-top:30px; color:#5B6472; font-size:12px;\">מסמך זה הופק אוטומטית ע\"י מערכת ה-AI-ERP.</p>\n</body>\n</html>`;\n\nconst binaryData = await this.helpers.prepareBinaryData(\n  Buffer.from(html, 'utf-8'),\n  `${f.InvoiceNumber}.html`,\n  'text/html'\n);\n\nreturn {\n  json: { invoiceNumber: f.InvoiceNumber, recordId: $json.id },\n  binary: { data: binaryData }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        -288
+      ],
+      "id": "26b2af73-d718-41d3-951c-84dbd7c6ccc0",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.invoiceNumber }}.html",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1snvUQyHFeXWlpCgvGP9II0Rqtq9u5rzU",
+          "mode": "list",
+          "cachedResultName": "קבלות",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1snvUQyHFeXWlpCgvGP9II0Rqtq9u5rzU"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -336,
+        -288
+      ],
+      "id": "b9799efd-fa2c-4544-b016-1902c80c5a45",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "RAHOKG6fikk8opCL",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblgfDk5HnJQrkYmw",
+          "mode": "list",
+          "cachedResultName": "Invoices",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tblgfDk5HnJQrkYmw"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Airtable Trigger').item.json.id }}",
+            "PdfUrl": "={{ $json.webContentLink }}",
+            "InvoiceNumber": "={{ $('Airtable Trigger').item.json.fields.InvoiceNumber }}",
+            "CustomerId": "={{ $('Airtable Trigger').item.json.fields.CustomerId }}",
+            "Amount": "={{ $('Airtable Trigger').item.json.fields.Amount }}",
+            "VatAmount": "={{ $('Airtable Trigger').item.json.fields.VatAmount }}",
+            "Total": "={{ $('Airtable Trigger').item.json.fields.Total }}",
+            "Status": "={{ $('Airtable Trigger').item.json.fields.Status }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "InvoiceNumber",
+              "displayName": "InvoiceNumber",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "CustomerId",
+              "displayName": "CustomerId",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "VatAmount",
+              "displayName": "VatAmount",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Total",
+              "displayName": "Total",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "PdfUrl",
+              "displayName": "PdfUrl",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        -288
+      ],
+      "id": "71d9a103-732c-4ed5-a790-0716036139d7",
+      "name": "Update record",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Airtable Trigger": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a record": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "84815d9c-4fc4-4edc-89f6-9161eb0b4b21",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "V5T0PJreHsJehT82",
+  "tags": []
+}

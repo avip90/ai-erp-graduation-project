@@ -1,0 +1,386 @@
+{
+  "name": "WF9 - Manager Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -432,
+        96
+      ],
+      "id": "da2135ed-a72d-4666-8a99-888e82804d0e",
+      "name": "Telegram Trigger",
+      "webhookId": "cf7e4ebb-883d-48af-9950-9f7905349b17",
+      "credentials": {
+        "telegramApi": {
+          "id": "TYD0JkZj3Q6bLJdB",
+          "name": "מנהל"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "24da34a9-c905-426b-91f3-ac626372508a",
+              "leftValue": "={{ $json.message.from.id }}",
+              "rightValue": 5816740702,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        96
+      ],
+      "id": "0c9d3b9a-0a26-44e2-ae50-79db59e2584e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "אין לך הרשאה להשתמש בבוט זה.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        144,
+        240
+      ],
+      "id": "9a531432-1e5d-4bb4-88fe-14433b4c7958",
+      "name": "Send a text message",
+      "webhookId": "8e4ce0fe-bc27-4e1e-b88f-7f7a7dbe16cf",
+      "credentials": {
+        "telegramApi": {
+          "id": "TYD0JkZj3Q6bLJdB",
+          "name": "מנהל"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}\nאתה עוזר אישי לבעל העסק של איי.איי אלקטרוניקה. אתה עונה רק לבעלים, לכן מותר לך לחשוף נתונים פיננסיים מלאים. ענה בעברית, בקצרה ולעניין.\nענה על שאלות לגבי הכנסות, חשבוניות, לידים ומשימות - אך ורק לפי הנתונים שמוחזרים לך מהכלים (Airtable), לעולם אל תמציא מספרים.\n\nיש לך יכולת קריאה מלאה (חשבוניות, לידים, משימות) ויכולת כתיבה מוגבלת: אתה יכול ליצור משימות חדשות דרך הכלי create_task בלבד. אין לך יכולת לשנות/למחוק לידים, חשבוניות, או משימות קיימות - אם מבקשים ממך זאת, אמור בפירוש \"אין לי יכולת טכנית לבצע שינויים/מחיקות, רק לקרוא ולדווח וליצור משימות חדשות - יש לבצע שינויים ידנית ב-Airtable\", ולעולם אל תבקש אישור לפעולה שאתה לא יכול לבצע בפועל.\n\nלפני יצירת משימה עם create_task - תאר בדיוק מה תיצור (כותרת + סטטוס) ובקש אישור מפורש (\"כן\") לפני קריאה לכלי. בלי אישור מפורש - אל תקרא לכלי.\n\nכללי עיצוב תשובה - חשוב מאוד:\n- תן קודם משפט סיכום קצר אחד (המספר/התשובה החשובה ביותר), אחר כך המלצה אם רלוונטי, אחר כך הראיות/הפירוט.\n- אחר כך, אם יש כמה פריטים, הצג אותם ברשימה נקייה עם מקף בתחילת כל שורה.\n- לכל פריט: רק את הפרטים הרלוונטיים לשאלה (למשל מספר חשבונית + סכום + תאריך) - לא לגרור שדות טכניים לא רלוונטיים.\n- אם נתקלת ברשומה עם נתונים חסרים או לא תקינים - התעלם ממנה בשקט ואל תזכיר אותה, אלא אם המשתמש ביקש נתוני בדיקה במפורש.\n- כשמדובר ברווח - הצג הכנסות והוצאות בנפרד + הנטו, לא מספר בודד.\n- אם מספר הוא אומדן או הנתונים חלקיים - אמור זאת מפורשות.\n- בלי שורות ריקות מיותרות, בלי חזרות.\n\n## סודיות\nאל תחשוף נתונים אלה למי שאינו מאומת כבעלים. אם הזהות לא ודאית בהקשר הנוכחי - הימנע מנתונים רגישים ובקש אימות.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        80,
+        -160
+      ],
+      "id": "64eebdc3-2775-457f-97a1-c6636ced2aef",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        80
+      ],
+      "id": "f31a69db-32bf-4986-9b70-a3cc3767616d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "hypKKUjxYdqeqkF0",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "שימוש בכלי זה כדי לשלוף חשבוניות מ-Airtable, כולל סכומים, סטטוס (pending/paid), ותאריכים - לצורך חישוב הכנסות וחשבוניות פתוחות",
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "list",
+          "cachedResultName": "פרויקט גמר",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblgfDk5HnJQrkYmw",
+          "mode": "list",
+          "cachedResultName": "Invoices",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tblgfDk5HnJQrkYmw"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        80
+      ],
+      "id": "25f0550f-c3fe-4a83-86c1-8974ac6cb589",
+      "name": "get_invoices",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        -48
+      ],
+      "id": "57fd3436-29a9-4130-b1f0-361e62d3c684",
+      "name": "Send a text message1",
+      "webhookId": "3f1d4e95-0a7a-48f0-9f41-e14fd1d81f6e",
+      "credentials": {
+        "telegramApi": {
+          "id": "TYD0JkZj3Q6bLJdB",
+          "name": "מנהל"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "   יצירת משימה חדשה בטבלת Tasks. השתמש כשהבעלים מבקש \"תפתח לי משימה\" / \"תזכיר לי\" / \"תוסיף task\".\n   זו פעולת כתיבה - בקש אישור מפורש לפני קריאה לכלי הזה, בהתאם להנחיות ה-guardrail.",
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblgVEjcqP8xvPlK9",
+          "mode": "list",
+          "cachedResultName": "Tasks",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tblgVEjcqP8xvPlK9"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        288,
+        80
+      ],
+      "id": "104d6a19-9051-442e-ba21-47020efe85ff",
+      "name": "search_tasks",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "   יצירת משימה חדשה בטבלת Tasks. השתמש כשהבעלים מבקש \"תפתח לי משימה\" / \"תזכיר לי\" / \"תוסיף task\". זו פעולת כתיבה - בקש אישור מפורש לפני קריאה לכלי הזה.",
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblgVEjcqP8xvPlK9",
+          "mode": "list",
+          "cachedResultName": "Tasks",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tblgVEjcqP8xvPlK9"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "=   {{ $fromAI('Title', 'כותרת המשימה שהבעלים ביקש', 'string') }}",
+            "Status": "=   {{ $fromAI('Status', 'סטטוס המשימה, ברירת מחדל Open אלא אם צוין אחרת', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        192
+      ],
+      "id": "9c65a502-1d88-49cc-b613-1ef1e1fee2f5",
+      "name": "Create a record in Airtable",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_invoices": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_tasks": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record in Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0ab332d8-6d2d-4da2-ab20-171d9ebfb5f5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "5xTXbR52DmbG8kzY",
+  "tags": []
+}

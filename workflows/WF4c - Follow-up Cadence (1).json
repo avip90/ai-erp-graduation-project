@@ -1,0 +1,525 @@
+{
+  "name": "WF4c - Follow-up Cadence",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -304,
+        -128
+      ],
+      "id": "065cc689-d9ba-485b-8aaf-bb42e1833f09",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "id"
+        },
+        "filterByFormula": "   {Status} = 'Contacted'",
+        "options": {},
+        "sort": {
+          "property": []
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        -128
+      ],
+      "id": "0d0b0810-4099-4dc0-8d6c-5c51bd94e061",
+      "name": "Search records",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = Date.now();\nconst results = [];\n\nfor (const item of $input.all()) {\n  const f = item.json.fields;\n  const lastContacted = f.LastContactedAt ? new Date(f.LastContactedAt).getTime() : new Date(f.Created).getTime();\n  const daysSince = (now - lastContacted) / (1000 * 60 * 60 * 24);\n  const contactCount = f.ContactCount || 0;\n\n  if (daysSince < 3) continue; // עוד לא הגיע הזמן\n\n  results.push({\n    json: {\n      recordId: item.json.id,\n      name: f.Name,\n      email: f.Email,\n      interest: f.Interest,\n      contactCount,\n      group: contactCount >= 4 ? 'B_giveUp' : 'A_followUp'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -128
+      ],
+      "id": "062ea67d-98b1-4058-856c-ad950fbfd470",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4020545e-f876-4a1c-9e73-c3a14ca8d6bc",
+              "leftValue": "={{ $json.group }}",
+              "rightValue": "A_followUp",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        -128
+      ],
+      "id": "be80ae5c-a540-4166-88f1-99fa01c041a4",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const f = $json;\nconst count = f.contactCount; // 1, 2, or 3 (לפני השליחה הנוכחית)\n\nconst angles = {\n  1: {\n    subject: `עדיין רלוונטי? - ${f.interest || 'ציוד לעסק'}`,\n    body: `שלום ${f.name},\n\nרציתי לחזור בקצרה לגבי הפנייה בנושא ${f.interest || 'ציוד אלקטרוניקה'}.\nיש לנו כרגע מבצעי כמות שעשויים להתאים - אשמח לשלוח פרטים אם עדיין רלוונטי.\n\nבברכה, צוות איי.איי אלקטרוניקה`\n  },\n  2: {\n    subject: `דגמים מומלצים - ${f.interest || 'ציוד לעסק'}`,\n    body: `שלום ${f.name},\n\nחשבתי שיעניין אתכם לראות כמה דגמים ספציפיים שמתאימים לצרכים כמו שלכם.\nאשמח לשלוח גיליון השוואה קצר - רק תאשרו ואני שולח.\n\nבברכה, צוות איי.איי אלקטרוניקה`\n  },\n  3: {\n    subject: `פנייה אחרונה - ${f.interest || 'ציוד לעסק'}`,\n    body: `שלום ${f.name},\n\nזו הפנייה האחרונה מצדי בנושא - לא רוצה להעמיס.\nאם יש עניין בעתיד, אני כאן. אם לא רלוונטי כרגע - אפשר פשוט להשיב \"לא כרגע\" ולא אפריע יותר.\n\nבברכה, צוות איי.איי אלקטרוניקה`\n  }\n};\n\nconst chosen = angles[count] || angles[1];\n\nreturn {\n  json: {\n    recordId: f.recordId,\n    email: f.email,\n    contactCount: f.contactCount,\n    subject: chosen.subject,\n    body: chosen.body\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -224
+      ],
+      "id": "ca32ae31-f1d4-4129-8a65-039a0f8f8e27",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        -224
+      ],
+      "id": "27c69a36-4712-43da-bc51-6daa681a7024",
+      "name": "Send a message",
+      "webhookId": "b72e9dcc-be8d-4d2e-aacb-56e46170a164",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yQZz2KbvORPANJAb",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl7HHNcQAmEznc1h",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tbl7HHNcQAmEznc1h"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Code in JavaScript1').item.json.recordId }}",
+            "ContactCount": "= {{ $('Code in JavaScript1').item.json.contactCount + 1 }}",
+            "LastContactedAt": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Interest",
+              "displayName": "Interest",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ContactCount",
+              "displayName": "ContactCount",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "LastContactedAt",
+              "displayName": "LastContactedAt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        -224
+      ],
+      "id": "1429a6c7-08b6-465e-ae21-aa9ec3112adc",
+      "name": "Update record",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl7HHNcQAmEznc1h",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tbl7HHNcQAmEznc1h"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ContactCount": 0,
+            "id": "={{ $json.recordId }}",
+            "Status": "Dead"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Interest",
+              "displayName": "Interest",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ContactCount",
+              "displayName": "ContactCount",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "LastContactedAt",
+              "displayName": "LastContactedAt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        -32
+      ],
+      "id": "ca94ade0-83d0-49bc-b370-6d81e0a3fe08",
+      "name": "Update -DEAD",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update -DEAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "958a9f6f-5fab-4d3f-827c-b83a9664f9b3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "0mn5Z5b68WoLNu1J",
+  "tags": []
+}

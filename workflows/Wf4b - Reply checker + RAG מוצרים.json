@@ -1,0 +1,632 @@
+{
+  "name": "Wf4b - Reply checker + RAG מוצרים",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "includeSpamTrash": false,
+          "labelIds": [
+            "INBOX"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1296,
+        -512
+      ],
+      "id": "0d0386c7-baa1-4d25-97de-06ff4b11e0ae",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yQZz2KbvORPANJAb",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawFrom = $json.From || '';\nconst match = rawFrom.match(/<(.+?)>/);\nconst senderEmail = (match ? match[1] : rawFrom).trim().toLowerCase();\n\nreturn {\n  json: {\n    senderEmail,\n    subject: $json.Subject || '',\n    snippet: $json.snippet || '',\n    messageId: $json.id\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        -864
+      ],
+      "id": "a905832e-5765-4532-81f1-e8373381281d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl7HHNcQAmEznc1h",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tbl7HHNcQAmEznc1h"
+        },
+        "filterByFormula": "=LOWER({Email}) = '{{ $json.senderEmail }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -896,
+        -784
+      ],
+      "id": "c07c7d14-076c-4d7d-998c-ce94df67b777",
+      "name": "Search records",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "46d3144e-6ac6-4dfc-a09d-bc71d3cb70ba",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -720,
+        -624
+      ],
+      "id": "d8b63d76-a67b-451d-b724-eb5e0804869c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "11c91973-d2bb-49f8-b103-98bdb9e65dda",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        176,
+        -640
+      ],
+      "id": "85daeb90-abd7-47f4-b2ca-10745d63fec3",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appdB6Amrw3JWFCUH",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl7HHNcQAmEznc1h",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appdB6Amrw3JWFCUH/tbl7HHNcQAmEznc1h"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('בדיקת מונה + הרכבת נתונים').item.json.recordId }}",
+            "ContactCount": "={{ $('בדיקת מונה + הרכבת נתונים').item.json.newCount }}",
+            "Status": "={{ $json.leadStatus }}",
+            "LastContactedAt": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Interest",
+              "displayName": "Interest",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ContactCount",
+              "displayName": "ContactCount",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "LastContactedAt",
+              "displayName": "LastContactedAt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        576,
+        -960
+      ],
+      "id": "2101cb73-3434-4035-8e3a-8dd68e1bc1d5",
+      "name": "Update record",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "2R1x5h9nngCU1SpC",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const currentCount = $('Search records').item.json.fields.ContactCount || 0;\n\nif (currentCount >= 4) {\n  return { json: { skip: true } };\n}\n\nreturn {\n  json: {\n    skip: false,\n    recordId: $('Search records').item.json.id,\n    newCount: currentCount + 1,\n    replyText: $json.replyText,\n    leadStatus: $json.leadStatus,\n    toEmail: $('Search records').item.json.fields.Email\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -816
+      ],
+      "id": "09b0434a-ae25-44ac-8c68-c572b2e14c9e",
+      "name": "בדיקת מונה + הרכבת נתונים"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "message": "=  {{ $('בדיקת מונה + הרכבת נתונים').item.json.replyText }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        -960
+      ],
+      "id": "1b8f71ce-e1be-4e96-a9a5-0084704750e3",
+      "name": "Reply to a message",
+      "webhookId": "8715675c-816b-4bbd-af7f-03a93c855119",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yQZz2KbvORPANJAb",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=שם הליד: {{ $('Search records').item.json.fields.Name }}\n\nתוכן ההודעה מהליד:\n{{ $('Code in JavaScript').item.json.snippet }}",
+        "options": {
+          "systemMessage": "אתה עוזר לנציג מכירות באיי.איי אלקטרוניקה. תפקידך לנתח תגובת אימייל מליד ולנסח תשובה מקצועית בעברית.\nיש לך גישה לכלי בשם store_products שמחזיר מידע אמיתי מהמלאי. כשהליד שואל על מוצר, מחיר, או מלאי - השתמש בכלי הזה ותן תשובה עם פרטים קשורים לבקשה (שם מוצר ומחיר מדויק), לא כלליים. אל תמציא מחירים או שמות מוצרים שלא קיבלת מהכלי.\nכאשר אתה משתמש בכלי store_products, הוא מחזיר לך טקסט גולמי עם מפרט טכני מלא - אל תעתיק אותו כמו שהוא לתוך התשובה. תפקידך לסנתז ממנו תשובה אנושית קצרה:\n- אם יש כמה מוצרים רלוונטיים - בחר עד 2 שהכי מתאימים לשאלה, וסכם כל אחד במשפט אחד (שם + מחיר + יתרון מרכזי אחד), לא את כל המפרט.\n- אם השאלה כללית מדי לבחור מוצר ספציפי - שאל שאלת הבהרה קצרה אחת (לאיזה שימוש? איזה תקציב?) במקום לשפוך את כל האפשרויות.\n- כתוב כמו נציג מכירות אנושי כותב מייל אישי - עם ברכה, גוף קצר, וסיום - לא כרשימת מפרטים טכניים.\nאם הליד מביע עניין חיובי - עודד המשך שיחה ושאל שאלה אחת ממוקדת (תקציב/מועד), אלא אם כבר סיפקת מידע מוצר מלא ומדויק מהכלי - במקרה כזה אפשר לשאול ישירות אם רוצה להתקדם. אם מסרב - תודה בנימוס וסיים בכבוד. פנה ללקוח בשם שקיבלת בשדה \"שם הליד\" - לא בשם שמופיע בחתימת המייל אם שונה. חתום כ\"צוות איי.איי אלקטרוניקה\".\n\n## מחיר והנחה (09) - הוספה\nמחירים לעסקים תמיד לפני מע\"מ. אם מציעים הצעת מחיר - ציין תוקף 14 יום. הנחה מעל 10% - אל תבטיח, ציין שמועברת לאישור מנהל.\n\n## הסלמה (07) - הוספה\nאם העסקה/הכמות המבוקשת משתמעת מעל 5,000 ₪, או הליד מבקש תנאים מיוחדים/הנחה חריגה - אל תסגור בעצמך, ציין בתשובה שההצעה תועבר לאישור נציג/מנהל.\n\n## סודיות (07) - הוספה\nלעולם אל תחשוף עלויות פנימיות, מרווחים, ספקי המקור, או נתוני לידים/לקוחות אחרים.\n\nבנוסף לתשובה עצמה, סווג את התשובה של הליד לאחת מהאפשרויות:\n- \"Qualified\" - הליד הביע התעניינות אמיתית עם צורך/כמות/מועד\n- \"Dead\" - הליד סירב, ביקש הסרה, או שאין לו עניין\n- \"Contacted\" - התשובה לא ברורה מספיק כדי לסווג, נשארים באותו סטטוס\nחשוב מאוד - פורמט הפלט: החזר אך ורק אובייקט JSON יחיד, בלי שום טקסט נוסף לפני או אחרי, במבנה המדויק הזה:\n{\"reply\": \"גוף התשובה בעברית\", \"leadStatus\": \"Qualified\" | \"Dead\" | \"Contacted\"}\nאל תוסיף markdown, אל תוסיף ```json, אל תצטט את המייל המקורי, אל תסביר את הבחירה שלך - רק את אובייקט ה-JSON.\n\nאם השאלה עוסקת בקטגוריית מוצרים שאינה קיימת אצלנו כלל (למשל מזון, ריהוט, ביגוד) — אמור זאת ישירות ובבירור (\"אנחנו חנות אלקטרוניקה ולא מוכרים X\"), ואל תשאל שאלת הבהרה על סוג/גודל/דגם כאילו יכול להיות שיש לנו אותו."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -528,
+        -960
+      ],
+      "id": "1e7f0fd4-161f-4522-b6df-7ac366bfe460",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -512,
+        -400
+      ],
+      "id": "b9fddd5e-241a-46ff-a635-6a80f6bdb417",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "hypKKUjxYdqeqkF0",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "שימוש בכלי זה כדי לענות על שאלות לגבי מוצרים, מחירים וזמינות במלאי"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        -496
+      ],
+      "id": "f28ee5d8-a1f7-4efd-8380-e01964e2cf14",
+      "name": "store_products"
+    },
+    {
+      "parameters": {
+        "memoryKey": {
+          "__rl": true,
+          "value": "ai_erp_products",
+          "mode": "id"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        -416,
+        -128
+      ],
+      "id": "bf314756-f06e-477c-bc3d-602a046129dd",
+      "name": "Simple Vector Store"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -416,
+        48
+      ],
+      "id": "1fed3ba0-1794-4882-9a96-845b78aefd45",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "hypKKUjxYdqeqkF0",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        -320
+      ],
+      "id": "d7a7cabd-b3ea-4e39-9bd4-c110859e82ad",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "hypKKUjxYdqeqkF0",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let replyText = '';\nlet leadStatus = 'Contacted';\nconst raw = $json.output || $json.content?.[0]?.text || '';\n\ntry {\n  const cleaned = raw.replace(/```json|```/g, '').trim();\n  const parsed = JSON.parse(cleaned);\n  replyText = parsed.reply || raw;\n  leadStatus = parsed.leadStatus || 'Contacted';\n} catch (e) {\n  replyText = raw || 'שגיאה בניתוח תגובת ה-AI - יש לבדוק ידנית';\n}\n\n// עיטוף ב-HTML עם כיוון RTL מפורש, כדי שעברית מעורבת במספרים/אנגלית תוצג נכון\nconst htmlReply = `<div dir=\"rtl\" style=\"text-align:right; font-family:Arial,sans-serif; font-size:14px; line-height:1.6;\">${replyText.replace(/\\n/g, '<br>')}</div>`;\n\nreturn { json: { replyText: htmlReply, leadStatus } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -816
+      ],
+      "id": "3222c10a-5b9b-4775-9c1d-2173dbc229d1",
+      "name": "פרופסור תשובת AI"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "בדיקת מונה + הרכבת נתונים": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply to a message": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "פרופסור תשובת AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store_products": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Vector Store": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "store_products",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Simple Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "store_products",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "פרופסור תשובת AI": {
+      "main": [
+        [
+          {
+            "node": "בדיקת מונה + הרכבת נתונים",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "41210697-b306-4f16-bc8b-afa7dcd2742c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf795e57273b10096e58b74e14a566ba6ba1050b80cf73a817bedbde81ba8a1d"
+  },
+  "nodeGroups": [],
+  "id": "emhI8Ba635H0W5NN",
+  "tags": []
+}
